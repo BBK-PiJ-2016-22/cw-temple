@@ -1,7 +1,16 @@
 package student;
 
+import b.j.i.a.E;
 import game.EscapeState;
 import game.ExplorationState;
+import game.GameState;
+import game.NodeStatus;
+import searchexample.Node;
+
+import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Explorer {
 
@@ -35,9 +44,48 @@ public class Explorer {
    *
    * @param state the information available at the current state
    */
+
+
   public void explore(ExplorationState state) {
     //TODO:
+      System.out.println("DistanceToTarget: "+state.getDistanceToTarget()+" CurrentLocation: "
+              +state.getCurrentLocation()+" Neighbors: "+state.getNeighbours());
+
+      List<Long> visitedStates = new ArrayList<>();
+      Stack<NodeStatus> lastState = new Stack<>();
+
+      NodeStatus move = state.getNeighbours().stream().findFirst().get();
+      visitedStates.add(move.getId());
+      lastState.push(move);
+      state.moveTo(move.getId());
+
+      while(state.getDistanceToTarget() != 0) {
+
+          // unvisited neighbours
+          List<NodeStatus> unvisited = state.getNeighbours()
+                  .stream().filter(a -> !visitedStates.contains(a.getId()))
+                  .collect(Collectors.toList());
+
+          if(!unvisited.isEmpty()){
+              NodeStatus sMin = unvisited.stream()
+                      .min(Comparator.comparingInt(NodeStatus::getDistanceToTarget))
+                      .get();
+              visitedStates.add(sMin.getId());
+              lastState.push(sMin);
+              state.moveTo(sMin.getId());
+
+              // only visited
+          }else{
+                // if he gets far away
+                lastState.pop();
+                NodeStatus n = lastState.pop();
+                visitedStates.add(n.getId());
+                lastState.push(n);
+                state.moveTo(n.getId());
+          }
+      }
   }
+
 
   /**
    * Escape from the cavern before the ceiling collapses, trying to collect as much
@@ -64,5 +112,6 @@ public class Explorer {
    */
   public void escape(EscapeState state) {
     //TODO: Escape from the cavern before time runs out
+
   }
 }
