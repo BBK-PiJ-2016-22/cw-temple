@@ -1,19 +1,7 @@
 package student;
-
-import b.e.N;
-import b.j.L;
-import b.j.i.a.E;
-import com.google.common.collect.Lists;
-import com.intellij.util.containers.ArrayListSet;
-import com.intellij.util.containers.IntObjectLinkedMap;
 import game.*;
-
 import java.util.*;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.Map.Entry.comparingByKey;
 
 public class Explorer {
 
@@ -64,7 +52,6 @@ public class Explorer {
 
       while(state.getDistanceToTarget() != 0) {
 
-          // unvisited neighbours
           List<NodeStatus> unvisited = state.getNeighbours()
                   .stream().filter(a -> !visitedStates.contains(a.getId()))
                   .collect(Collectors.toList());
@@ -77,9 +64,7 @@ public class Explorer {
               lastState.push(sMin);
               state.moveTo(sMin.getId());
 
-              // only visited
           }else{
-                // if he gets far away
                 lastState.pop();
                 NodeStatus n = lastState.pop();
                 visitedStates.add(n.getId());
@@ -115,248 +100,109 @@ public class Explorer {
    */
   public void escape(EscapeState state) {
     //TODO: Escape from the cavern before time runs out
-      /*List<Node> path = new ArrayList<>();
-    Map<Node, NodeInfo> closedList = new HashMap<>();
-    Map<Node, NodeInfo> openList = new HashMap<>();
 
-    openList.put(state.getCurrentNode(), new NodeInfo());
+    List gold = state.getVertices().stream()
+        .filter(a -> a.getTile().getGold() > 0)
+        .collect(Collectors.toList());  //forEach(a -> a.getTile().getGold());
 
-    while(!openList.isEmpty()){
+    System.out.println(gold.size());
 
-        Node q  = getMin();
-        openList.remove(q); // the node of the returned
-
-        Set<Node> neighbors = q.getNeighbours();
-        for(Node i: neighbors){
-            if(i.equals(goal )){
-                break;
-            }
-            // set parents to q
-
-            //set i g = i.getEdge(q).length
-            // set i.h = calculate distance to goal
-            // set i.f = i.g + i.h
-
-            if(openList.containsKey(q) && openList.get(q).getF() < i.f){
-
-            }
-
-            if(closedList.containsKey(q) && openList.get(q).getF() <i.f){
-
-            }else{
-                openList.put(i, new NodeInfo());
-            }
-
-        }
-        closedList.put(q, new NodeInfo());
-
-    }
-
-*/
-
-
-
-
-
-
-      //state.getCurrentNode().getNeighbours().forEach(a -> infoMap.put(a, new NodeInfo(a)));
-
-      //System.out.println("distance" + infoMap.get(state.getCurrentNode()).cost(state.getExit()));
-
-
-      //openList = state.getCurrentNode().getNeighbours().stream().collect(Collectors.toList());
-
-    /*
-      Node pointer = state.getCurrentNode();
-
-      while(!pointer.equals(state.getExit())) {
-          System.out.println("P");
-           Node sMin = getMin(pointer, state.getExit());
-          infoMap.put(pointer, sMin);
-          pointer = sMin;
-      }
-
-      System.out.println(infoMap.size());
-    */
-    /*
-    while(!state.getCurrentNode().equals(state.getExit())) {
-
-        state.getCurrentNode().getNeighbours().forEach(a -> infoMap.put(a,
-                cost(state.getCurrentNode(), state.getExit(), a)));
-
-        //infoMap.forEach((a, b) -> System.out.println(b));
-
-        java.util.Map.Entry r = infoMap.entrySet().stream()
-                .sorted(Map.Entry.<Node, Double>comparingByValue()).findFirst().get();
-        System.out.println(r.getValue());
-        state.moveTo((Node) r.getKey());
-
-        //state.getCurrentNode().getExits()
-
-        infoMap.clear();
-
-    }
-    */
-
-
-
-      /*
-      openList.forEach(a -> System.out.println(a.getId()));
-      List<Node> toFeed = openList.stream().collect(Collectors.toList());
-      toFeed = toFeed.subList(0,toFeed.indexOf(state.getCurrentNode()));
-      toFeed = Lists.reverse(toFeed);
-      System.out.println("here");
-      toFeed.forEach(a -> System.out.println(a.getId()));
-
-      System.out.println(" start " +state.getCurrentNode().getId());
-      System.out.println(" exit " +state.getExit().getId());
-      System.out.println(openList.size());
-
-     state.getCurrentNode().getNeighbours().forEach(a -> System.out.println("n" + a.getId()));
-
-    */
-
-      search(state.getCurrentNode(), state.getExit());
-
+    search(state.getCurrentNode(), state.getExit()).forEach(state::moveTo);
 
   }
 
-  private List<Node> search(Node start, Node end) {
-      List<Node> path = new ArrayList<>();
-      Map<Node, NodeInfo> closedList = new HashMap<>();
-      Map<Node, NodeInfo> openList = new HashMap<>();
+  private List<Node> search(Node start, Node end){
+    Map<Node, NodeInfo> openList = new LinkedHashMap<>();
+    Map<Node, NodeInfo> closedList = new LinkedHashMap<>();
+    List<Node> route = new ArrayList<>();
+    boolean running = true;
+
+    openList.put(start, new NodeInfo(start, 0));
+
+    while(running){
 
 
-      openList.put(start, new NodeInfo(null,0, 0, 0));
-
-      boolean running = true;
-      while(running){
-
-          //java.util.Map.Entry r = openList.entrySet().stream()
-          //        .sorted(Map.Entry.comparingByValue((a, b) -> b.getF())).findFirst().get();
-
-          java.util.Map.Entry r = openList.entrySet().stream()
-                  .min(Map.Entry.comparingByValue((a, b) -> b.getF())).get();
+      Map.Entry current = openList.entrySet().stream()
+          .min(Comparator.comparingInt(a -> a.getValue().getF())).get();
 
 
-          //java.util.Map.Entry r = openList.entrySet().stream()
-          //        .min(Map.Entry.comparingByValue((a, b) -> b.getF())).get();
+      openList.remove((Node)current.getKey());
 
-          Node q = (Node) r.getKey();
+      closedList.put((Node)current.getKey(), (NodeInfo) current.getValue());
 
-          System.out.println("value" + "x" + q.getTile().getRow() +"y"+ q.getTile().getColumn());
+      if(((Node)current.getKey()).equals(end)){
+        running = false;
+      }
 
-          //java.util.Map.Entry r = openList.entrySet().stream()
-          //        .sorted(Map.Entry.<Node, Double>comparingByValue()).findFirst().get();
+      Set<Node> neighbours = ((Node) current.getKey()).getNeighbours();
+      for (Node i : neighbours){
 
-          openList.remove(q); // the node of the returned
-          System.out.println(openList.size());
-          //closedList.put((Node) r.getKey(), (NodeInfo) r.getValue());
-          Set<Node> neighbors = q.getNeighbours();
-          for (Node i : neighbors) {
-              if (i.equals(end)) {
-                  System.out.println("stop");
-                  running = false;
-              }
+        int g = 1;//((Node) current.getKey()).getEdge(i).length;
+        int h = distanceCal(i, end);
+        int f = h + g;
 
-              int g = i.getEdge(q).length;
-              int h = distance(i, end);
-              int f = g + h;
-              System.out.println("f " + f);
-              //set i g = i.getEdge(q).length
-              // set i.h = calculate distance to goal
-              // set i.f = i.g + i.h
+        if(!closedList.containsKey(i)){
 
-              // set parents to q
+          if(openList.containsKey(i)){
 
-              boolean ol = true, cl = true;
+            if(f < openList.get(i).getF()) {
+              openList.put(i, new NodeInfo((Node) current.getKey(),
+                  f));
+            }
 
-              if (openList.containsKey(i)) {
-                  System.out.println("yes1");
-                  if (openList.get(i).getF() < f) {
-                      System.out.println("yes3");
-                      ol = false;
-                  }
-              }
-
-              if (closedList.containsKey(i)) {
-                  System.out.println("yes2");
-                  if (closedList.get(i).getF() < f) {
-                      System.out.println("yes4");
-                      cl = false;
-                  }
-              }
-
-              if (ol && cl) {
-                  openList.put(i, new NodeInfo(q, f, g, h));
-              }
-
+          }else{
+              openList.put(i, new NodeInfo((Node) current.getKey(),
+                  f));
           }
-          closedList.put((Node) r.getKey(), (NodeInfo) r.getValue());
-
+        }
       }
-      return path;
+    }
+
+    // -s 1742133709835969167
+
+    Node p = end ;
+
+    while(p!=start) {
+      route.add(p);
+      p = closedList.get(p).getParent();
+    }
+
+    Collections.reverse(route);
+
+    return route;
 
   }
 
+  private class NodeInfo {
 
+    private Node parent;
+    private int f;
 
-   private class NodeInfo{
-       private Node parent;
-       private int f, g, h;
-
-       public NodeInfo(Node parent, int f, int g, int h) {
-           this.parent = parent;
-           this.f = f;
-           this.g = g;
-           this.h = h;
-       }
-
-       public Node getParent() {
-           return parent;
-       }
-
-       public void setParent(Node parent) {
-           this.parent = parent;
-       }
-
-       public int getF() {
-           return f;
-       }
-
-       public void setF(int f) {
-           this.f = f;
-       }
-
-       public int getG() {
-           return g;
-       }
-
-       public void setG(int g) {
-           this.g = g;
-       }
-
-       public int getH() {
-           return h;
-       }
-
-       public void setH(int h) {
-           this.h = h;
-       }
-   }
-
-    private int distance(Node parent, Node target){
-        int xN = parent.getTile().getColumn();
-        int yN = parent.getTile().getRow();
-
-        int xEnd = target.getTile().getColumn();
-        int yEnd = target.getTile().getRow();
-        int d = (Math.abs((xN - xEnd))) + (Math.abs(yN -yEnd));
-
-        //Double d = (Math.sqrt((Math.pow((xN-xEnd),2)) - ((Math.pow((yN-yEnd), 2)))));
-        System.out.println(d);
-        return d;
-
+    private NodeInfo(Node parent, int f) {
+      this.parent = parent;
+      this.f = f;
     }
+
+    private Node getParent() {
+      return parent;
+    }
+
+    private int getF() {
+      return f;
+    }
+
+  }
+
+  private int distanceCal(Node start, Node end){
+    int xN = start.getTile().getColumn();
+    int yN = start.getTile().getRow();
+
+    int xEnd = end.getTile().getColumn();
+    int yEnd = end.getTile().getRow();
+
+    return (Math.abs((xN - xEnd))) + (Math.abs(yN -yEnd));
+
+  }
 
 }
+
