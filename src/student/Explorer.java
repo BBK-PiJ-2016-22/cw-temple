@@ -101,13 +101,39 @@ public class Explorer {
   public void escape(EscapeState state) {
     //TODO: Escape from the cavern before time runs out
 
-    List gold = state.getVertices().stream()
+    List<Node> gold = state.getVertices().stream()
         .filter(a -> a.getTile().getGold() > 0)
         .collect(Collectors.toList());  //forEach(a -> a.getTile().getGold());
 
     System.out.println(gold.size());
 
-    search(state.getCurrentNode(), state.getExit()).forEach(state::moveTo);
+    Node maxGold = gold.stream().max(Comparator.comparingInt(a -> a.getTile().getGold())).get();
+
+
+    search(state.getCurrentNode(), maxGold).forEach(state::moveTo);
+    state.pickUpGold();
+
+
+    List<Node> route = search(state.getCurrentNode(), state.getExit());
+
+    for(Node i: route){
+      state.moveTo(i);
+      if(i.getTile().getGold() > 0){
+        state.pickUpGold();
+
+      }
+    }
+
+    //state.pickUpGold();
+
+    //search(state.getCurrentNode(), state.getExit()).forEach(state::moveTo);
+
+
+  }
+
+  private void running(Node start, Node end){
+
+
 
   }
 
