@@ -1,6 +1,9 @@
 package student;
+
+import b.e.N;
 import game.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 public class Explorer {
@@ -36,42 +39,40 @@ public class Explorer {
    * @param state the information available at the current state
    */
 
-
   public void explore(ExplorationState state) {
-    //TODO:
-      System.out.println("DistanceToTarget: "+state.getDistanceToTarget()+" CurrentLocation: "
-              +state.getCurrentLocation()+" Neighbors: "+state.getNeighbours());
+    System.out.println("DistanceToTarget: " + state.getDistanceToTarget() + " CurrentLocation: "
+        + state.getCurrentLocation() + " Neighbors: " + state.getNeighbours());
 
-      List<Long> visitedStates = new ArrayList<>();
-      Stack<NodeStatus> lastState = new Stack<>();
+    List<Long> visitedStates = new ArrayList<>();
+    Stack<NodeStatus> lastState = new Stack<>();
 
-      NodeStatus move = state.getNeighbours().stream().findFirst().get();
-      visitedStates.add(move.getId());
-      lastState.push(move);
-      state.moveTo(move.getId());
+    NodeStatus move = state.getNeighbours().stream().findFirst().get();
+    visitedStates.add(move.getId());
+    lastState.push(move);
+    state.moveTo(move.getId());
 
-      while(state.getDistanceToTarget() != 0) {
+    while (state.getDistanceToTarget() != 0) {
 
-          List<NodeStatus> unvisited = state.getNeighbours()
-                  .stream().filter(a -> !visitedStates.contains(a.getId()))
-                  .collect(Collectors.toList());
+      List<NodeStatus> unvisited = state.getNeighbours()
+          .stream().filter(a -> !visitedStates.contains(a.getId()))
+          .collect(Collectors.toList());
 
-          if(!unvisited.isEmpty()){
-              NodeStatus sMin = unvisited.stream()
-                      .min(Comparator.comparingInt(NodeStatus::getDistanceToTarget))
-                      .get();
-              visitedStates.add(sMin.getId());
-              lastState.push(sMin);
-              state.moveTo(sMin.getId());
+      if (!unvisited.isEmpty()) {
+        NodeStatus sMin = unvisited.stream()
+            .min(Comparator.comparingInt(NodeStatus::getDistanceToTarget))
+            .get();
+        visitedStates.add(sMin.getId());
+        lastState.push(sMin);
+        state.moveTo(sMin.getId());
 
-          }else{
-                lastState.pop();
-                NodeStatus n = lastState.pop();
-                visitedStates.add(n.getId());
-                lastState.push(n);
-                state.moveTo(n.getId());
-          }
+      } else {
+        lastState.pop();
+        NodeStatus n = lastState.pop();
+        visitedStates.add(n.getId());
+        lastState.push(n);
+        state.moveTo(n.getId());
       }
+    }
   }
 
 
@@ -101,43 +102,143 @@ public class Explorer {
   public void escape(EscapeState state) {
     //TODO: Escape from the cavern before time runs out
 
-    List<Node> gold = state.getVertices().stream()
-        .filter(a -> a.getTile().getGold() > 0)
-        .collect(Collectors.toList());  //forEach(a -> a.getTile().getGold());
+    running(state);
+    routeDistanceCal(search(state.getCurrentNode(), state.getExit()),state.getCurrentNode());
 
-    System.out.println(gold.size());
+  }
 
-    Node maxGold = gold.stream().max(Comparator.comparingInt(a -> a.getTile().getGold())).get();
+  private void running(EscapeState state) {
+
+    // calculating node with gold
+
+    List<GoldInfo> goldNodes = state.getVertices()
+        .stream().filter(a -> a.getTile().getGold() > 0)
+        .map(b -> new GoldInfo(state.getCurrentNode(), b, state.getExit()))
+        .sorted(Comparator.comparingInt(GoldInfo::getTotalDistance))
+        .collect(Collectors.toList());
 
 
-    search(state.getCurrentNode(), maxGold).forEach(state::moveTo);
-    state.pickUpGold();
+    //System.out.println("time remaining " + state.getTimeRemaining());
+    //goldNodes.forEach(a -> System.out.println(
+    //    "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
 
+    List<GoldInfo> shortList = goldNodes.stream().
+        filter(a -> a.getTotalDistance() < state.getTimeRemaining()).collect(Collectors.toList());
 
-    List<Node> route = search(state.getCurrentNode(), state.getExit());
+    //shortList.forEach(a -> System.out.println(
+      //  "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
+    if(!shortList.isEmpty()) {
+      walking(shortList.get(shortList.size() - 1).getRoute(), state);
+      walking(shortList.get(shortList.size() - 1).routeToExit, state);
+    }else{
+      walking(search(state.getCurrentNode(), state.getExit()),state);
+    }
+  }
 
-    for(Node i: route){
-      state.moveTo(i);
-      if(i.getTile().getGold() > 0){
-        state.pickUpGold();
+  /**
+   * Inner class containing info on gold status
+   */
+  private class GoldInfo{
+    private Node origin;
+    private List<Node> route;
+    private int distance;
+    private int goldValue;
+    private int totalDistance;
+    private List<Node> routeToExit;
 
-      }
+    public GoldInfo(Node from, Node origin, Node exit) {
+      this.origin = origin;
+      this.route = search(from, origin);
+      this.distance = routeDistanceCal(route, from);
+      this.goldValue = goldCalculator(route, from);
+      this.routeToExit = search(origin, exit);
+      this.totalDistance = distance + routeDistanceCal(routeToExit, origin);
+
     }
 
-    //state.pickUpGold();
+    public List<Node> getRoute() {
+      return route;
+    }
 
-    //search(state.getCurrentNode(), state.getExit()).forEach(state::moveTo);
+    public int getDistance() {
+      return distance;
+    }
 
+    public int getGoldValue() {
+      return goldValue;
+    }
+
+    public Node getOrigin() {
+      return origin;
+    }
+
+    public int getTotalDistance() {
+      return totalDistance;
+    }
+  }
+
+  /**
+   * Method for moving and picking up gold
+   * @param route
+   * @param state
+   */
+  private void walking(List<Node> route, EscapeState state) {
+
+    for (Node i : route) {
+      state.moveTo(i);
+
+      if (i.getTile().getGold() > 0) {
+        state.pickUpGold();
+      }
+    }
+  }
+
+
+  /**
+   * calculates gold on route
+   * @param route
+   * @return
+   */
+  private int goldCalculator(List<Node> route, Node start) {
+    int goldToReturn = start.getTile().getGold();
+    for (Node i : route) {
+      goldToReturn += i.getTile().getGold();
+    }
+    return goldToReturn;
+  }
+
+  /**
+   * Distance calculator for route
+   * @param route list to calculate cost of
+   * @param start start node
+   * @return cost of route
+   */
+  private int routeDistanceCal(List<Node> route, Node start) {
+    int distanceToReturn;
+
+    if(!route.isEmpty()) {
+      distanceToReturn = start.getEdge(route.get(0)).length;
+    }else{
+      distanceToReturn = 0;
+    }
+
+    for (int i = 0; i < route.size() - 1; i++) {
+      distanceToReturn += route.get(i).getEdge(route.get(i + 1)).length;
+    }
+
+    return distanceToReturn;
 
   }
 
-  private void running(Node start, Node end){
 
+  /**
+   * A-star search algorithm
+   * @param start
+   * @param end
+   * @return
+   */
+  private List<Node> search(Node start, Node end) {
 
-
-  }
-
-  private List<Node> search(Node start, Node end){
     Map<Node, NodeInfo> openList = new LinkedHashMap<>();
     Map<Node, NodeInfo> closedList = new LinkedHashMap<>();
     List<Node> route = new ArrayList<>();
@@ -145,50 +246,46 @@ public class Explorer {
 
     openList.put(start, new NodeInfo(start, 0));
 
-    while(running){
-
+    while (running) {
 
       Map.Entry current = openList.entrySet().stream()
           .min(Comparator.comparingInt(a -> a.getValue().getF())).get();
 
+      openList.remove((Node) current.getKey());
 
-      openList.remove((Node)current.getKey());
+      closedList.put((Node) current.getKey(), (NodeInfo) current.getValue());
 
-      closedList.put((Node)current.getKey(), (NodeInfo) current.getValue());
-
-      if(((Node)current.getKey()).equals(end)){
+      if (((Node) current.getKey()).equals(end)) {
         running = false;
       }
 
       Set<Node> neighbours = ((Node) current.getKey()).getNeighbours();
-      for (Node i : neighbours){
+      for (Node i : neighbours) {
 
-        int g = 1;//((Node) current.getKey()).getEdge(i).length;
+        int g = ((Node) current.getKey()).getEdge(i).length;
         int h = distanceCal(i, end);
-        int f = h + g;
+        int f = g + h;
 
-        if(!closedList.containsKey(i)){
+        if (!closedList.containsKey(i)) {
 
-          if(openList.containsKey(i)){
+          if (openList.containsKey(i)) {
 
-            if(f < openList.get(i).getF()) {
+            if (f < openList.get(i).getF()) {
               openList.put(i, new NodeInfo((Node) current.getKey(),
                   f));
             }
 
-          }else{
-              openList.put(i, new NodeInfo((Node) current.getKey(),
-                  f));
+          } else {
+            openList.put(i, new NodeInfo((Node) current.getKey(),
+                f));
           }
         }
-      }
+      }//7098088759984582890 // 8613558971011317745
     }
 
-    // -s 1742133709835969167
+    Node p = end;
 
-    Node p = end ;
-
-    while(p!=start) {
+    while (p != start) {
       route.add(p);
       p = closedList.get(p).getParent();
     }
@@ -199,6 +296,9 @@ public class Explorer {
 
   }
 
+  /**
+   * Class for A-star node info
+   */
   private class NodeInfo {
 
     private Node parent;
@@ -219,7 +319,11 @@ public class Explorer {
 
   }
 
-  private int distanceCal(Node start, Node end){
+
+  /**
+   * distance calculator for A-star algorithm
+   */
+  private int distanceCal(Node start, Node end) {
     int xN = start.getTile().getColumn();
     int yN = start.getTile().getRow();
 
