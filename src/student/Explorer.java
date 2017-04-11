@@ -103,7 +103,7 @@ public class Explorer {
     //TODO: Escape from the cavern before time runs out
 
     running(state);
-    routeDistanceCal(search(state.getCurrentNode(), state.getExit()),state.getCurrentNode());
+    routeDistanceCal(search(state.getCurrentNode(), state.getExit()), state.getCurrentNode());
 
   }
 
@@ -117,7 +117,6 @@ public class Explorer {
         .sorted(Comparator.comparingInt(GoldInfo::getTotalDistance))
         .collect(Collectors.toList());
 
-
     //System.out.println("time remaining " + state.getTimeRemaining());
     //goldNodes.forEach(a -> System.out.println(
     //    "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
@@ -126,23 +125,38 @@ public class Explorer {
         filter(a -> a.getTotalDistance() < state.getTimeRemaining()).collect(Collectors.toList());
 
     //shortList.forEach(a -> System.out.println(
-      //  "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
-    if(!shortList.isEmpty()) {
-      walking(shortList.get(shortList.size() - 1).getRoute(), state);
-      walking(shortList.get(shortList.size() - 1).routeToExit, state);
-    }else{
-      walking(search(state.getCurrentNode(), state.getExit()),state);
+    //  "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
+
+    GoldInfo maxGoldSL;
+
+    if (shortList.stream()
+        .max(Comparator.comparingInt(GoldInfo::getGoldValue))
+        .isPresent()) {
+      maxGoldSL = shortList.stream()
+          .max(Comparator.comparingInt(GoldInfo::getGoldValue))
+          .get();
+    } else {
+      maxGoldSL = null;
+    }
+
+    if (maxGoldSL != null) {
+      walking(maxGoldSL.getRoute(), state);
+      walking(maxGoldSL.routeToExit, state);
+    } else {
+      walking(search(state.getCurrentNode(), state.getExit()), state);
     }
   }
 
   /**
    * Inner class containing info on gold status
    */
-  private class GoldInfo{
+  private class GoldInfo {
+
     private Node origin;
     private List<Node> route;
     private int distance;
     private int goldValue;
+    private int distanceToExit;
     private int totalDistance;
     private List<Node> routeToExit;
 
@@ -152,7 +166,8 @@ public class Explorer {
       this.distance = routeDistanceCal(route, from);
       this.goldValue = goldCalculator(route, from);
       this.routeToExit = search(origin, exit);
-      this.totalDistance = distance + routeDistanceCal(routeToExit, origin);
+      this.distanceToExit = routeDistanceCal(routeToExit, origin);
+      this.totalDistance = distance + distanceToExit;
 
     }
 
@@ -175,12 +190,18 @@ public class Explorer {
     public int getTotalDistance() {
       return totalDistance;
     }
+
+    public int getDistanceToExit() {
+      return distanceToExit;
+    }
+
+    public List<Node> getRouteToExit() {
+      return routeToExit;
+    }
   }
 
   /**
    * Method for moving and picking up gold
-   * @param route
-   * @param state
    */
   private void walking(List<Node> route, EscapeState state) {
 
@@ -196,8 +217,6 @@ public class Explorer {
 
   /**
    * calculates gold on route
-   * @param route
-   * @return
    */
   private int goldCalculator(List<Node> route, Node start) {
     int goldToReturn = start.getTile().getGold();
@@ -209,6 +228,7 @@ public class Explorer {
 
   /**
    * Distance calculator for route
+   *
    * @param route list to calculate cost of
    * @param start start node
    * @return cost of route
@@ -216,9 +236,9 @@ public class Explorer {
   private int routeDistanceCal(List<Node> route, Node start) {
     int distanceToReturn;
 
-    if(!route.isEmpty()) {
+    if (!route.isEmpty()) {
       distanceToReturn = start.getEdge(route.get(0)).length;
-    }else{
+    } else {
       distanceToReturn = 0;
     }
 
@@ -233,9 +253,6 @@ public class Explorer {
 
   /**
    * A-star search algorithm
-   * @param start
-   * @param end
-   * @return
    */
   private List<Node> search(Node start, Node end) {
 
@@ -330,7 +347,7 @@ public class Explorer {
     int xEnd = end.getTile().getColumn();
     int yEnd = end.getTile().getRow();
 
-    return (Math.abs((xN - xEnd))) + (Math.abs(yN -yEnd));
+    return (Math.abs((xN - xEnd))) + (Math.abs(yN - yEnd));
 
   }
 
