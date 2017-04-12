@@ -11,5 +11,5 @@ public interface Constants {
 
   //String ROOT = "/Users/keith/Courses/PiJ/coursework/cw-temple/code/src/Smain.java.images/";
   //replaced with:
-    String ROOT = System.getProperty("user.dir")+"/src/Smain.java.images/";
+    String ROOT = System.getProperty("user.dir")+"/src/main/java/images/";
 }
