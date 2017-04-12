@@ -132,7 +132,7 @@ public class GameState implements ExplorationState, EscapeState {
       exploreErrored = true;
     }
   }
-  public static List<Double> result = new ArrayList<>();
+
   void escape() {
     stage = Stage.ESCAPE;
     Tile orbTile = exploreCavern.getTarget().getTile();
@@ -167,8 +167,7 @@ public class GameState implements ExplorationState, EscapeState {
     DecimalFormat df = new DecimalFormat("#.##");
     System.out.println("Bonus multiplier : " + df.format(computeBonusFactor()));
     System.out.println("Score            : " + getScore());
-    //result.add(Double.parseDouble(df.format(computeBonusFactor())));
-    result.add((double) getScore());
+
   }
 
   /**
