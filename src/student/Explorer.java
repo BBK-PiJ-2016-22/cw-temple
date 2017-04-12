@@ -109,42 +109,53 @@ public class Explorer {
 
   private void running(EscapeState state) {
 
-    // calculating node with gold
+    while(true){
+
+      List<GoldInfo> shortList = shortList(state);
+
+      GoldInfo maxGoldSL;
+
+      if (shortList.stream() .max(Comparator.comparingInt(GoldInfo::getGoldValue))
+          .isPresent()) {
+
+        maxGoldSL = shortList.stream()
+            .max(Comparator.comparingInt(GoldInfo::getGoldValue))
+            .get();
+
+      } else {
+        maxGoldSL = null;
+      }
+
+
+      if (maxGoldSL != null && !maxGoldSL.getRoute().isEmpty()) {
+        walking(maxGoldSL.getRoute(), state);
+
+        //walking(maxGoldSL.routeToExit, state);
+      } else {
+
+        walking(search(state.getCurrentNode(), state.getExit()), state);
+        break;
+      }
+
+    }
+
+  }
+
+  /**
+   * Creates shortlist of reachable nodes
+   * @param state
+   * @return
+   */
+  private List<GoldInfo> shortList(EscapeState state){
 
     List<GoldInfo> goldNodes = state.getVertices()
         .stream().filter(a -> a.getTile().getGold() > 0)
         .map(b -> new GoldInfo(state.getCurrentNode(), b, state.getExit()))
-        .sorted(Comparator.comparingInt(GoldInfo::getTotalDistance))
         .collect(Collectors.toList());
 
-    //System.out.println("time remaining " + state.getTimeRemaining());
-    //goldNodes.forEach(a -> System.out.println(
-    //    "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
-
-    List<GoldInfo> shortList = goldNodes.stream().
+    return goldNodes.stream().
         filter(a -> a.getTotalDistance() < state.getTimeRemaining()).collect(Collectors.toList());
 
-    //shortList.forEach(a -> System.out.println(
-    //  "distance " + a.getDistance() + " gold " + a.getGoldValue() + " total dist " + a.getTotalDistance()));
-
-    GoldInfo maxGoldSL;
-
-    if (shortList.stream()
-        .max(Comparator.comparingInt(GoldInfo::getGoldValue))
-        .isPresent()) {
-      maxGoldSL = shortList.stream()
-          .max(Comparator.comparingInt(GoldInfo::getGoldValue))
-          .get();
-    } else {
-      maxGoldSL = null;
-    }
-
-    if (maxGoldSL != null) {
-      walking(maxGoldSL.getRoute(), state);
-      walking(maxGoldSL.routeToExit, state);
-    } else {
-      walking(search(state.getCurrentNode(), state.getExit()), state);
-    }
   }
 
   /**
