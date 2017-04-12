@@ -1,11 +1,22 @@
 package student;
 
-import b.e.N;
-import game.*;
-import java.util.*;
-import java.util.Map.Entry;
+import game.EscapeState;
+import game.ExplorationState;
+import game.Node;
+import game.NodeStatus;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 import java.util.stream.Collectors;
 
+/**
+ * Explorer class.
+ */
 public class Explorer {
 
   /**
@@ -39,7 +50,7 @@ public class Explorer {
    * @param state the information available at the current state
    */
 
-  public void explore(ExplorationState state) {
+  public void explore(final ExplorationState state) {
     System.out.println("DistanceToTarget: " + state.getDistanceToTarget() + " CurrentLocation: "
         + state.getCurrentLocation() + " Neighbors: " + state.getNeighbours());
 
@@ -99,23 +110,29 @@ public class Explorer {
    *
    * @param state the information available at the current state
    */
-  public void escape(EscapeState state) {
-    //TODO: Escape from the cavern before time runs out
-
+  public void escape(final EscapeState state) {
     running(state);
-    routeDistanceCal(search(state.getCurrentNode(), state.getExit()), state.getCurrentNode());
-
   }
 
-  private void running(EscapeState state) {
+  /**
+   * Method for main algorithm.
+   *
+   * @param state current game state
+   */
+  private void running(final EscapeState state) {
 
-    while(true){
+    if (state.getCurrentNode().getTile().getGold() > 0) {
+      state.pickUpGold();
+    }
+
+    while (true) {
 
       List<GoldInfo> shortList = shortList(state);
 
       GoldInfo maxGoldSL;
 
-      if (shortList.stream() .max(Comparator.comparingInt(GoldInfo::getGoldValue))
+      if (shortList.stream()
+          .max(Comparator.comparingInt(GoldInfo::getGoldValue))
           .isPresent()) {
 
         maxGoldSL = shortList.stream()
@@ -126,11 +143,8 @@ public class Explorer {
         maxGoldSL = null;
       }
 
-
       if (maxGoldSL != null && !maxGoldSL.getRoute().isEmpty()) {
         walking(maxGoldSL.getRoute(), state);
-
-        //walking(maxGoldSL.routeToExit, state);
       } else {
 
         walking(search(state.getCurrentNode(), state.getExit()), state);
@@ -142,11 +156,12 @@ public class Explorer {
   }
 
   /**
-   * Creates shortlist of reachable nodes
-   * @param state
-   * @return
+   * Method for creating shortlist of reachable nodes.
+   *
+   * @param state current game state
+   * @return list of GoldInfo objects
    */
-  private List<GoldInfo> shortList(EscapeState state){
+  private List<GoldInfo> shortList(final EscapeState state) {
 
     List<GoldInfo> goldNodes = state.getVertices()
         .stream().filter(a -> a.getTile().getGold() > 0)
@@ -154,25 +169,49 @@ public class Explorer {
         .collect(Collectors.toList());
 
     return goldNodes.stream().
-        filter(a -> a.getTotalDistance() < state.getTimeRemaining()).collect(Collectors.toList());
+        filter(a -> a.getTotalDistance() < state.getTimeRemaining())
+        .collect(Collectors.toList());
 
   }
 
   /**
-   * Inner class containing info on gold status
+   * Inner class containing info on routes to gold nodes.
    */
-  private class GoldInfo {
+  private final class GoldInfo {
 
-    private Node origin;
+    /**
+     * Shortest path calculated with A-star.
+     */
     private List<Node> route;
+    /**
+     * Distance to gold node.
+     */
     private int distance;
+    /**
+     * Value of gold on route.
+     */
     private int goldValue;
+    /**
+     * Distance to exit.
+     */
     private int distanceToExit;
+    /**
+     * Distance to gold node and exit.
+     */
     private int totalDistance;
+    /**
+     * Shortest path to exit calculated with A-star.
+     */
     private List<Node> routeToExit;
 
-    public GoldInfo(Node from, Node origin, Node exit) {
-      this.origin = origin;
+    /**
+     * Constructor method.
+     *
+     * @param from start node
+     * @param origin the gold node to reach
+     * @param exit the exit
+     */
+    private GoldInfo(final Node from, final Node origin, final Node exit) {
       this.route = search(from, origin);
       this.distance = routeDistanceCal(route, from);
       this.goldValue = goldCalculator(route, from);
@@ -182,39 +221,42 @@ public class Explorer {
 
     }
 
+    /**
+     * Route from given start point to gold node.
+     *
+     * @return list of nodes for route
+     */
     public List<Node> getRoute() {
       return route;
     }
 
-    public int getDistance() {
-      return distance;
-    }
-
+    /**
+     * Value of all gold on route.
+     *
+     * @return int value of gold
+     */
     public int getGoldValue() {
       return goldValue;
     }
 
-    public Node getOrigin() {
-      return origin;
-    }
-
+    /**
+     * Distance from start node to gold node to exit.
+     *
+     * @return total distance
+     */
     public int getTotalDistance() {
       return totalDistance;
     }
 
-    public int getDistanceToExit() {
-      return distanceToExit;
-    }
-
-    public List<Node> getRouteToExit() {
-      return routeToExit;
-    }
   }
 
   /**
-   * Method for moving and picking up gold
+   * Method for moving and picking up gold.
+   *
+   * @param route list of nodes
+   * @param state current game state
    */
-  private void walking(List<Node> route, EscapeState state) {
+  private void walking(final List<Node> route, final EscapeState state) {
 
     for (Node i : route) {
       state.moveTo(i);
@@ -227,9 +269,13 @@ public class Explorer {
 
 
   /**
-   * calculates gold on route
+   * Method calculates amount of gold on route.
+   *
+   * @param route list of nodes
+   * @param start start value
+   * @return int amount of gold
    */
-  private int goldCalculator(List<Node> route, Node start) {
+  private int goldCalculator(final List<Node> route, final Node start) {
     int goldToReturn = start.getTile().getGold();
     for (Node i : route) {
       goldToReturn += i.getTile().getGold();
@@ -238,13 +284,13 @@ public class Explorer {
   }
 
   /**
-   * Distance calculator for route
+   * Distance calculator for route.
    *
    * @param route list to calculate cost of
    * @param start start node
    * @return cost of route
    */
-  private int routeDistanceCal(List<Node> route, Node start) {
+  private int routeDistanceCal(final List<Node> route, final Node start) {
     int distanceToReturn;
 
     if (!route.isEmpty()) {
@@ -263,9 +309,13 @@ public class Explorer {
 
 
   /**
-   * A-star search algorithm
+   * A-star search algorithm.
+   *
+   * @param start start node
+   * @param end end node
+   * @return list of nodes to follow for shortest distance
    */
-  private List<Node> search(Node start, Node end) {
+  private List<Node> search(final Node start, final Node end) {
 
     Map<Node, NodeInfo> openList = new LinkedHashMap<>();
     Map<Node, NodeInfo> closedList = new LinkedHashMap<>();
@@ -308,7 +358,7 @@ public class Explorer {
                 f));
           }
         }
-      }//7098088759984582890 // 8613558971011317745
+      }
     }
 
     Node p = end;
@@ -325,22 +375,44 @@ public class Explorer {
   }
 
   /**
-   * Class for A-star node info
+   * Inner class for NodeInfo.
    */
-  private class NodeInfo {
+  private static final class NodeInfo {
 
+    /**
+     * Parent of node.
+     */
     private Node parent;
+    /**
+     * f cost of node.
+     */
     private int f;
 
-    private NodeInfo(Node parent, int f) {
+    /**
+     * Constructor.
+     *
+     * @param parent parent of node.
+     * @param f calculated f cost
+     */
+    private NodeInfo(final Node parent, final int f) {
       this.parent = parent;
       this.f = f;
     }
 
+    /**
+     * Returns node in route.
+     *
+     * @return parent
+     */
     private Node getParent() {
       return parent;
     }
 
+    /**
+     * Returns best move.
+     *
+     * @return f
+     */
     private int getF() {
       return f;
     }
@@ -349,9 +421,14 @@ public class Explorer {
 
 
   /**
-   * distance calculator for A-star algorithm
+   * A-star distance calculator method.
+   * Calculates manhattan distance.
+   *
+   * @param start start node.
+   * @param end end node.
+   * @return int distance.
    */
-  private int distanceCal(Node start, Node end) {
+  private int distanceCal(final Node start, final Node end) {
     int xN = start.getTile().getColumn();
     int yN = start.getTile().getRow();
 
@@ -363,4 +440,3 @@ public class Explorer {
   }
 
 }
-
